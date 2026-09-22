@@ -1,0 +1,62 @@
+# The same pipeline for a provider hosted on GitLab: contract tests on every
+# push, and on a v* tag a release with the package and its feed entry.
+# Spool finds the latest release's feed at
+#   https://gitlab.com/<group>/<project>/-/releases/permalink/latest/downloads/spool-provider.json
+# which is what "Add from a link" resolves a GitLab project URL to.
+
+stages: [test, package, release]
+
+contract:
+  stage: test
+  image: ubuntu:24.04
+  script:
+    - apt-get update && apt-get install -y --no-install-recommends cmake ninja-build g++ qt6-base-dev qt6-declarative-dev python3 zstd
+    - python3 tools/check-sdk.py
+    - cmake -S sdk -B build/sdk -G Ninja && cmake --build build/sdk
+    - QT_QPA_PLATFORM=offscreen timeout 20s build/sdk/provider-contract-runner tests/contract.mjs
+    - QT_QPA_PLATFORM=offscreen QV4_FORCE_INTERPRETER=1 timeout 20s build/sdk/provider-contract-runner tests/contract.mjs
+
+package:
+  stage: package
+  image: python:3.14-slim
+  rules:
+    - if: $CI_COMMIT_TAG =~ /^v/
+  script:
+    - ID=$(python3 -c 'import json; print(json.load(open("manifest.json"))["id"])')
+    - VERSION=$(python3 -c 'import json; print(json.load(open("manifest.json"))["version"])')
+    - test "$CI_COMMIT_TAG" = "v$VERSION"
+    - PACKAGE="$ID-$VERSION.tar.zst"
+    - BASE="$CI_API_V4_URL/projects/$CI_PROJECT_ID/packages/generic/provider/$VERSION"
+    - python3 sdk/spool-provider.py build . --output "dist/$PACKAGE"
+    - python3 sdk/spool-provider.py feed "dist/$PACKAGE" --url "$BASE/$PACKAGE" > dist/spool-provider.json
+    - apt-get update && apt-get install -y --no-install-recommends curl
+    - 'curl -fsS --header "JOB-TOKEN: $CI_JOB_TOKEN" --upload-file "dist/$PACKAGE" "$BASE/$PACKAGE"'
+    - 'curl -fsS --header "JOB-TOKEN: $CI_JOB_TOKEN" --upload-file dist/spool-provider.json "$BASE/spool-provider.json"'
+    - echo "PACKAGE=$PACKAGE" > release.env && echo "BASE=$BASE" >> release.env
+  artifacts:
+    reports:
+      dotenv: release.env
+
+release:
+  stage: release
+  image: registry.gitlab.com/gitlab-org/release-cli:latest
+  rules:
+    - if: $CI_COMMIT_TAG =~ /^v/
+  needs: [package]
+  script:
+    - echo "Releasing $CI_COMMIT_TAG"
+  release:
+    tag_name: $CI_COMMIT_TAG
+    description: "Open Movies $CI_COMMIT_TAG"
+    assets:
+      links:
+        # filepath gives each asset the stable /downloads/<name> path the
+        # latest-release permalink serves.
+        - name: $PACKAGE
+          url: $BASE/$PACKAGE
+          filepath: /$PACKAGE
+          link_type: package
+        - name: spool-provider.json
+          url: $BASE/spool-provider.json
+          filepath: /spool-provider.json
+          link_type: other
