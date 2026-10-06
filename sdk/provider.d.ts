@@ -129,7 +129,10 @@ export interface Resolved {
     url: string; headers?: Record<string, string>; variantId: string; playSessionId?: string;
     playMethod?: 'DirectPlay' | 'DirectStream' | 'Transcode'; container?: string;
     streams?: Stream[]; segments?: Segment[];
-    trickplay?: { width: number; height: number; columns: number; rows: number; count: number; intervalMs: number };
+    /** Native preview loader fetches/caches sheets or one BIF sequence using this account's headers. */
+    trickplay?: { width: number; height: number; columns: number; rows: number; count: number; intervalMs: number;
+        urlTemplate: string; format?: 'sprites'; headers?: Record<string, string> } |
+        { format: 'bif'; url: string; width?: number; height?: number; headers?: Record<string, string> };
 }
 /** Answer resolve with this to show the provider's `picker` screen first; Spool calls resolve again with what it completes with merged in. */
 export interface PickRequest { pick: Record<string, Value> }
@@ -137,8 +140,8 @@ export interface PickRequest { pick: Record<string, Value> }
 export interface Segment { type: 'Intro' | 'Outro' | 'Recap' | 'Preview' | 'Commercial'; startTicks: number | string; endTicks: number | string }
 
 export interface Source {
-    /** Required. Templates take {itemId} {type} {tag} {width} {height} {quality} {format}; trickplay {itemId} {width} {index} {variantId}. */
-    describe(): { artwork?: string; trickplay?: string };
+    /** Required. Artwork templates take {itemId} {type} {tag} {width} {height} {quality} {format}. */
+    describe(): { artwork?: string };
 
     libraries?: Operation<{}, { items: { id: string; title: string; collectionType?: string; posterTag?: string }[] }>;
     browse?: Operation<PageArgs & { parentId?: string; collectionType?: string; recursive?: boolean; genre?: string;

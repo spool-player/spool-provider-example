@@ -72,6 +72,21 @@ no Node or browser globals, and Qt's engine lacks some newer built-ins such as `
 
 This is a reviewed, in-process profile, not a sandbox: install providers you trust.
 
+## Seek previews
+
+Return `resolve().trickplay` for the selected media variant, not a global URL
+template in `describe()`. Sprite sheets use
+`{width, height, columns, rows, count, intervalMs, urlTemplate}`; the absolute
+HTTP(S) template has one `{index}` substitution. BIF sequences use
+`{format: "bif", url}` with optional `width`/`height`. Pass the whole sequence
+URL, not individual JPEGs: C++ parses its timestamp/offset index and decodes
+the selected frame. Missing server-generated previews mean omit `trickplay`.
+
+Both formats use the account's `resolve().headers`; keep tokens out of URLs.
+The native loader prefetches the resume preview, caches bounded preview data
+separately from posters, and uploads only the requested frame. While loading
+or on failure, the player shows no preview frame or black placeholder.
+
 ## Screens
 
 A screen is mounted with a `provider` property (`ScreenContext` in `provider.d.ts`) and may
