@@ -9,13 +9,19 @@ It shows the parts most providers need:
 | | |
 | --- | --- |
 | `manifest.json` | Identity, `origins` (the one server it talks to) and a `picker` screen; no `login`, so Spool adds it without asking anything |
-| `logic/provider.mjs` | `createSource` with a library, paging, search, details and `resolve` |
+| `logic/provider.mjs` | `createSource` with a library, paging, search, details, playback and finite Original downloads |
 | `logic/films.mjs` | The catalogue: a fixed list, with the folders Blender keeps each film's files in |
-| `ui/Files.qml` | The picker: `resolve` answers `{pick}`, Spool shows this list of files (like a torrent's), and resolves again with `{file}` |
+| `ui/Files.qml` | The existing file picker serves playback and downloads, including sizes and exact edition selection |
 | `tests/contract.mjs` | Runs the provider in Qt's JS engine against scripted responses |
 
 The contract every provider implements is `sdk/provider.d.ts`; `sdk/README.md` covers limits, screens
 and packaging.
+
+Open Movies 1.1.0 supports Original downloads with the current Spool host.
+Blender's public server serves complete files but does not convert them, so the
+provider deliberately omits `downloadTranscode`. Downloads retain the selected
+file and declared byte count; `.ogv` files use the Ogg container. Native host
+logging records download outcomes without exposing media URLs.
 
 ## Trying it
 

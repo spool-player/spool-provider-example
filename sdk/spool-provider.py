@@ -30,7 +30,7 @@ MAX_FILES = 512
 EXTENSIONS = {".mjs", ".js", ".qml", ".json", ".png", ".jpg", ".svg", ".webp", ".ttf", ".otf", ".txt", ".md", ".map"}
 QML_IMPORTS = {"QtQuick", "QtQuick.Layouts", "QtQuick.Controls", "QtQml", "QtQml.Models", "Spool"}
 CAPABILITIES = {"search", "userState", "reporting", "segments", "streamQuality", "trickplay", "discovery",
-                "groupPlayback", "remoteControl"}
+                "groupPlayback", "remoteControl", "speedTest", "downloads", "downloadTranscode"}
 UI_ROLES = {"login", "settings", "picker"}
 ROOTS = ("manifest.json", "LICENSE", "NOTICE", "logic", "ui", "assets")
 NATIVE_MAGIC = (b"\x7fELF", b"MZ", b"\xcf\xfa\xed\xfe", b"\xce\xfa\xed\xfe", b"\xca\xfe\xba\xbe", b"\0asm")
@@ -90,6 +90,15 @@ def validate(files: dict[str, bytes]) -> dict:
     unknown = set(manifest.get("capabilities", [])) - CAPABILITIES
     if unknown:
         fail(f"unknown capabilities: {sorted(unknown)}")
+    extensions = manifest.get("extensions", {})
+    if not isinstance(extensions, dict) or len(extensions) > 32:
+        fail("manifest.extensions must be an object with at most 32 declarations")
+    for extension, major in extensions.items():
+        if len(extension) > 128 or not ID.fullmatch(extension):
+            fail("manifest.extensions ids must be namespaced and at most 128 characters")
+        if (type(major) not in (int, float) or not 1 <= major <= 2147483647
+                or int(major) != major):
+            fail("manifest.extensions versions must be exact positive wire-major integers")
     for origin in manifest.get("origins", []):
         if origin != "*" and not re.fullmatch(r"https?://[^/\s]+", origin):
             fail(f"origins are scheme://host[:port] or *: {origin}")

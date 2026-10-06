@@ -3,34 +3,43 @@ import QtQuick
 import QtQuick.Layouts
 import Spool
 
-// Which file to play: every one the film has, with its size, the way a
+// Which file to play or download: every one the film has, with its size, the way a
 // torrent client lists a release. Completes with {file}.
 FocusScope {
     id: root
 
     property var provider
+    readonly property bool saving: provider && provider.arguments.download === true
     property bool loading: true
     property string error: ""
 
     function size(bytes) {
-        const units = ["B", "KB", "MB", "GB"]
-        let value = Number(bytes) || 0
-        let unit = 0
-        while (value >= 1000 && unit < units.length - 1) {
-            value /= 1000
-            unit += 1
+        const units = saving ? ["B", "KiB", "MiB", "GiB"] : ["B", "KB", "MB", "GB"];
+        let value = Number(bytes) || 0;
+        let unit = 0;
+        const base = saving ? 1024 : 1000;
+        while (value >= base && unit < units.length - 1) {
+            value /= base;
+            unit += 1;
         }
-        return value.toFixed(unit > 1 ? 1 : 0) + " " + units[unit]
+        return value.toFixed(unit > 1 ? 1 : 0) + " " + units[unit];
     }
 
     Component.onCompleted: {
-        provider.requestList("files", { "itemId": provider.arguments.itemId }).then(() => {
-            loading = false
-            InputKeys.focus(list)
+        provider.requestList("files", {
+            "itemId": provider.arguments.itemId
+        }).then(() => {
+            if (provider.closed)
+                return;
+            loading = false;
+            InputKeys.focus(list);
         }, code => {
-            loading = false
-            error = code === "network_error" ? "Couldn't reach Blender's download server" : "Couldn't list the files"
-        })
+            if (provider.closed)
+                return;
+            loading = false;
+            error = code === "network_error" ? "Couldn't reach Blender's download server" : "Couldn't list the files";
+            InputKeys.focus(cancelButton);
+        });
     }
 
     ColumnLayout {
@@ -45,7 +54,7 @@ FocusScope {
         }
 
         SecondaryText {
-            text: root.error || (root.loading ? "Reading the file list…" : "Choose a file to play")
+            text: root.error || (root.loading ? "Reading the file list…" : root.saving ? "Choose a file to download. Saved exactly as published, at the size shown." : "Choose a file to play")
         }
 
         ListView {
@@ -62,18 +71,21 @@ FocusScope {
                 width: list.width
                 label: record.title
                 detail: [record.kind, record.quality, root.size(record.size)].filter(part => part).join(" · ")
-                iconName: record.kind === "Trailer" ? "movie" : "play_arrow"
+                iconName: record.kind === "Trailer" ? "movie" : root.saving ? "download" : "play_arrow"
                 highlighted: ListView.isCurrentItem && list.activeFocus
                 onHovered: list.currentIndex = index
-                onActivated: root.provider.complete({ "file": record.id })
+                onActivated: root.provider.complete({
+                    "file": record.id
+                })
             }
             function activate() {
                 if (currentItem)
-                    currentItem.activated()
+                    currentItem.activated();
             }
         }
 
         ActionButton {
+            id: cancelButton
             Layout.alignment: Qt.AlignRight
             text: "Cancel"
             kind: "flat"

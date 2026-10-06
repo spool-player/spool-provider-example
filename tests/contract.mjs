@@ -25,7 +25,7 @@ export function run() {
         && quality('Sintel.2010.4k.mkv') === '4K' && quality('trailer_iphone.m4v') === '', 'qualities');
 
     const requests = [];
-    const host = { http: url => {
+    const host = { isLogEnabled: () => false, log: () => {}, http: url => {
         requests.push(url);
         const body = url.endsWith('durian/movies/') ? listing : url.endsWith('durian/trailer/') ? trailers : '';
         return Promise.resolve({ status: body ? 200 : 404, body: body });
@@ -55,5 +55,24 @@ export function run() {
             () => check(false, 'only listed files play'), error => check(error.message === 'selected_variant_unavailable',
                 'unknown files are refused'));
     }).then(() => source.details({ itemId: 'big-buck-bunny' }, host).then(
-        () => check(false, 'a failed listing rejects'), error => check(error.message === 'http_404', 'http errors')));
+        () => check(false, 'a failed listing rejects'), error => check(error.message === 'http_404', 'http errors')))
+        .then(() => source.download({ itemId: 'sintel', mode: 'original' }, host)).then(result => {
+        check(result.pick && result.pick.download, 'downloads ask for a concrete edition');
+        return source.download({ itemId: 'sintel', mode: 'original',
+            variantId: 'durian/movies/Sintel.2010.1080p.mkv' }, host);
+    }).then(result => {
+        check(result.container === 'mkv' && result.size === 1180090590,
+            'the selected original has its complete file container and byte count');
+        const ogvHost = { log: () => {}, http: () => Promise.resolve({ status: 200,
+            body: '<a href="film.ogv">film.ogv</a> 01-Jan-2026 12:00 4096' }) };
+        const ogvSource = createSource({}, {});
+        return ogvSource.download({ itemId: 'sintel', mode: 'original',
+            variantId: 'durian/movies/film.ogv' }, ogvHost).then(plan => {
+            check(plan.container === 'ogg' && plan.size === 4096, 'Ogg video uses the host-supported Ogg container');
+        });
+    }).then(() => {
+        return Promise.resolve().then(() => source.download({ itemId: 'sintel', mode: 'transcoded' }, host)).then(
+            () => check(false, 'a public file host cannot convert media'),
+            error => check(error.message === 'download_transcode_unavailable', 'conversion is explicitly unavailable'));
+    });
 }

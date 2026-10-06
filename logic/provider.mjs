@@ -74,6 +74,23 @@ export function createSource(configuration, sourceHost) {
         return cache[entry.id];
     }
 
+    function select(args, host, download) {
+        const entry = film(args.itemId);
+        return files(host, entry).then(list => {
+            if (!list.length)
+                throw new Error('nothing_to_play');
+            const id = args.file || args.variantId;
+            if (!id)
+                return { pick: { kind: 'file', itemId: entry.id, title: entry.title, download: download } };
+            const chosen = list.find(file => file.id === id);
+            if (!chosen)
+                throw new Error('selected_variant_unavailable');
+            return { url: server + chosen.id.split('/').map(encodeURIComponent).join('/'),
+                container: chosen.title.split('.').pop().toLowerCase().replace(/^ogv$/, 'ogg'),
+                size: chosen.size, variantId: chosen.id };
+        });
+    }
+
     return {
         describe: () => ({}),
 
@@ -100,18 +117,15 @@ export function createSource(configuration, sourceHost) {
         files: (args, host) => files(host, film(args.itemId)).then(list => ({ items: list })),
 
         // Playing asks which file first, then plays it straight from Blender.
-        resolve: (args, host) => {
-            const entry = film(args.itemId);
-            return files(host, entry).then(list => {
-                if (!list.length)
-                    throw new Error('nothing_to_play');
-                if (!args.file)
-                    return { pick: { kind: 'file', itemId: entry.id, title: entry.title } };
-                const chosen = list.find(file => file.id === args.file);
-                if (!chosen)
-                    throw new Error('selected_variant_unavailable');
-                return { url: server + chosen.id.split('/').map(encodeURIComponent).join('/'), variantId: chosen.id,
-                    container: chosen.title.split('.').pop().toLowerCase(), playMethod: 'DirectPlay' };
+        resolve: (args, host) => select(args, host, false).then(result =>
+            result.pick ? result : Object.assign(result, { playMethod: 'DirectPlay' })),
+        download: (args, host) => {
+            if (args.mode !== 'original')
+                throw new Error('download_transcode_unavailable');
+            return select(args, host, true).then(result => {
+                if (!result.pick)
+                    host.log('debug', 'original download negotiated', { size: result.size, container: result.container });
+                return result.pick ? result : { url: result.url, container: result.container, size: result.size };
             });
         }
     };
