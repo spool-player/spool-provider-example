@@ -70,3 +70,11 @@ Ids starting with `spool.` are reserved for first-party providers; use your own 
 (`yourname.provider`).
 
 The films are © Blender Foundation under Creative Commons licences; see NOTICE.
+
+## Current capability contract
+
+Packages use manifest format 3, with no `api` or `extensions` fields.
+`capabilities` declares supported operations; `describe().capabilities` offers
+strict boolean account availability. Host declarations are not authorization:
+origin approval and operation-specific policy checks remain required. The copied
+SDK is pinned by `sdk.lock.json`; releases must use those exact host SDK bytes.

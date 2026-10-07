@@ -92,7 +92,7 @@ export function createSource(configuration, sourceHost) {
     }
 
     return {
-        describe: () => ({}),
+        describe: () => ({ capabilities: {"search": true, "downloads": true} }),
 
         libraries: () => ({ items: [{ id: 'films', title: 'Open Movies', collectionType: 'movies' }] }),
         browse: args => page(films, args),

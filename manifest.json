@@ -1,16 +1,20 @@
 {
-  "format": 2,
-  "api": "0.2",
+  "format": 3,
   "id": "example.open-movies",
   "name": "Open Movies",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "publisher": "Spool examples",
   "summary": "Blender's open films, free to watch",
   "homepage": "https://github.com/spool-player/spool-provider-example",
   "icon": "assets/icon.svg",
   "entry": "logic/provider.mjs",
-  "capabilities": ["search", "downloads"],
-  "origins": ["https://download.blender.org"],
+  "capabilities": [
+    "search",
+    "downloads"
+  ],
+  "origins": [
+    "https://download.blender.org"
+  ],
   "ui": {
     "picker": "ui/Files.qml"
   }
