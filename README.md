@@ -28,8 +28,14 @@ logging records download outcomes without exposing media URLs.
 ```
 cmake -S sdk -B build/sdk && cmake --build build/sdk
 build/sdk/provider-contract-runner tests/contract.mjs
-python3 sdk/spool-provider.py build .        # dist/example.open-movies-<version>.tar.zst
+VERSION=$(python3 -c 'import json; print(json.load(open("manifest.json"))["version"])')
+python3 sdk/spool-provider.py build . --output "dist/example.open-movies-$VERSION.szo"
+python3 sdk/spool-provider.py validate "dist/example.open-movies-$VERSION.szo"
 ```
+
+Future packages use `.szo` (Spool Zstandard Object), with the same format-3 zstd USTAR
+bytes. The pinned SDK is unchanged; pass `--output` explicitly rather than using
+its historical default filename. Existing published package URLs remain unchanged.
 
 In Spool: Settings → Providers → Add from a link, and paste this repository's URL. Spool reads
 `spool-provider.json` from the latest release, checks the package's SHA-256, installs it, and keeps it

@@ -25,7 +25,7 @@ package:
     - ID=$(python3 -c 'import json; print(json.load(open("manifest.json"))["id"])')
     - VERSION=$(python3 -c 'import json; print(json.load(open("manifest.json"))["version"])')
     - test "$CI_COMMIT_TAG" = "v$VERSION"
-    - PACKAGE="$ID-$VERSION.tar.zst"
+    - PACKAGE="$ID-$VERSION.szo"
     - BASE="$CI_API_V4_URL/projects/$CI_PROJECT_ID/packages/generic/provider/$VERSION"
     - python3 sdk/spool-provider.py build . --output "dist/$PACKAGE"
     - python3 sdk/spool-provider.py feed "dist/$PACKAGE" --url "$BASE/$PACKAGE" > dist/spool-provider.json
